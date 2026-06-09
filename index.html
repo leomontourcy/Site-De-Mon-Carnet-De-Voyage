@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voyage Léo Montourcy — Carnet de voyage</title>
+  <meta name="description" content="Découvrez le carnet de voyage de Léo Montourcy : photos, vidéos et souvenirs à travers le monde sur une carte interactive." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="css/luxe.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="topnav reveal">
+      <a class="brand" href="index.html">Voyage <span>Léo Montourcy</span></a>
+      <div class="topnav-links">
+        <a href="#carte">Carte</a>
+        <a href="#galerie">Galerie</a>
+        <a href="https://instagram.com/leo_mtnc" target="_blank" rel="noopener">Instagram</a>
+      </div>
+    </nav>
+ 
+    <header class="hero reveal" id="top">
+      <p class="hero-eyebrow">Collection privée</p>
+      <h1>Voyage Léo Montourcy</h1>
+      <p class="hero-lead">Survole une ville pour un aperçu · clique pour ouvrir l'album. Sur mobile, utilise la liste sous la carte.</p>
+    </header>
+
+    <div class="ribbon" aria-label="Statistiques">
+      <div class="ribbon-cell"><strong>7</strong><span>Pays</span></div>
+      <div class="ribbon-cell"><strong id="mCities">26</strong><span>Villes</span></div>
+      <div class="ribbon-cell"><strong>198</strong><span>Souvenirs</span></div>
+      <div class="ribbon-cell"><strong>2026</strong><span>À venir</span></div>
+    </div>
+
+    <section class="chapter" id="carte">
+      <div class="chapter-head reveal">
+        <h2>Carte du monde</h2>
+        <p id="mapHint">Survol = aperçu · Clic sur la carte = album · Liste = zoom puis bouton « Ouvrir »</p>
+      </div>
+      <div class="map-frame reveal">
+        <div class="map-inner">
+          <div id="map" role="application" aria-label="Carte des voyages"></div>
+          <div class="map-vignette" aria-hidden="true"></div>
+          <div id="mapFallback" class="map-fallback">
+            <p><strong>Connexion requise</strong><br>Internet nécessaire pour la carte.</p>
+          </div>
+          <div id="mapGoCta" class="map-go-cta" aria-hidden="true">
+            <button type="button" class="map-go-cta-btn" id="mapGoCtaBtn">Ouvrir l'album →</button>
+            <button type="button" class="map-go-cta-dismiss" id="mapGoCtaDismiss" aria-label="Fermer">✕</button>
+          </div>
+        </div>
+      </div>
+      <nav class="dest-grid" id="destNav" aria-label="Destinations"></nav>
+    </section>
+
+    <section class="chapter" id="galerie">
+      <h2 class="gallery-title reveal">Albums par ville</h2>
+      <p class="gallery-sub reveal">Chaque carte mène directement à la page de la destination.</p>
+      <div class="gallery" id="gridposts"></div>
+    </section>
+
+    <footer class="footer reveal">Voyage Léo Montourcy</footer>
+  </div>
+
+  <div id="mapPreview" class="map-preview" aria-hidden="true">
+    <div class="map-preview-card">
+      <div class="map-preview-title"></div>
+      <div class="map-preview-grid"></div>
+      <div class="map-preview-cta">Ouvrir l'album →</div>
+    </div>
+  </div>
+
+  <script src="js/voyages.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+  (function () {
+    const PLACES = VOYAGES.places;
+    const preview = document.getElementById('mapPreview');
+    const previewTitle = preview.querySelector('.map-preview-title');
+    const previewGrid = preview.querySelector('.map-preview-grid');
+    const PREVIEW_W = 220;
+    const PREVIEW_H = 340;
+    const finePointer = VOYAGES.hasFinePointer();
+    const follower = finePointer ? VOYAGES.createPreviewFollower(preview) : null;
+
+    let map = null;
+    let hideTimer = null;
+    let activeKey = null;
+    const pinEls = new Map();
+    const markers = new Map();
+    const mapInner = document.querySelector('.map-inner');
+    const mapGoCta = document.getElementById('mapGoCta');
+    const mapGoCtaBtn = document.getElementById('mapGoCtaBtn');
+    const mapGoCtaDismiss = document.getElementById('mapGoCtaDismiss');
+    let pendingGoKey = null;
+    let autoGoTimer = null;
+    const isCoarse = window.matchMedia('(pointer: coarse)').matches;
+
+    document.getElementById('mCities').textContent = PLACES.filter(p => !p.future).length;
+
+    if (isCoarse) {
+      document.getElementById('mapHint').textContent =
+        'Touche une ville dans la liste · la carte zoome · puis « Ouvrir » (ou attente 1 s)';
+    }
+
+    function hideGoCta() {
+      clearTimeout(autoGoTimer);
+      pendingGoKey = null;
+      mapGoCta.classList.remove('is-shown');
+      mapGoCta.setAttribute('aria-hidden', 'true');
+    }
+
+    function showGoCta(key) {
+      const place = PLACES.find(p => p.key === key);
+      if (!place) return;
+      pendingGoKey = key;
+      mapGoCtaBtn.textContent = 'Ouvrir ' + place.label + ' →';
+      mapGoCta.classList.add('is-shown');
+      mapGoCta.setAttribute('aria-hidden', 'false');
+      clearTimeout(autoGoTimer);
+      if (isCoarse) {
+        autoGoTimer = setTimeout(() => {
+          if (pendingGoKey === key) goVille(key);
+        }, 1000);
+      }
+    }
+
+    mapGoCtaBtn.addEventListener('click', () => {
+      if (pendingGoKey) goVille(pendingGoKey);
+    });
+    mapGoCtaDismiss.addEventListener('click', hideGoCta);
+
+    function updateMapLabels() {
+      if (!map || !mapInner) return;
+      mapInner.classList.toggle('map-labels-on', map.getZoom() >= 5);
+    }
+
+    function pinColor(key) {
+      const d = VOYAGES.data[key];
+      return (d && d.color) ? d.color : '#2c4a6e';
+    }
+
+    function pinHtml(p) {
+      const cls = ['pin', p.future && 'future'].filter(Boolean).join(' ');
+      const color = pinColor(p.key);
+      return '<div class="' + cls + '" data-key="' + p.key + '">' +
+        '<div class="pin-ring" style="--pin-color:' + color + '"></div>' +
+        '<div class="pin-label">' + p.label + '</div></div>';
+    }
+
+    function setActivePin(key) {
+      activeKey = key;
+      pinEls.forEach((el, k) => el.classList.toggle('is-active', k === key));
+      document.querySelectorAll('.dest-btn').forEach(btn => {
+        btn.classList.toggle('is-active', btn.dataset.key === key);
+      });
+    }
+
+    function flyToPlace(key, zoom) {
+      const p = PLACES.find(x => x.key === key);
+      if (!map || !p) return;
+      setActivePin(key);
+      map.flyTo([p.lat, p.lng], zoom || 6, { duration: 1.4, easeLinearity: 0.25 });
+    }
+
+    function goVille(key) {
+      window.location.href = VOYAGES.villeUrl(key);
+    }
+
+    function coverScaleFor(key) {
+      const d = VOYAGES.data[key];
+      return (d && d.coverScale) ? d.coverScale : 1;
+    }
+
+    function applyCardCover(video, key) {
+      const scale = coverScaleFor(key);
+      video.style.transform = scale > 1
+        ? 'translate(-50%, -50%) scale(' + scale + ')'
+        : '';
+    }
+
+    function showPreview(key, clientX, clientY) {
+      if (!finePointer) return;
+      const d = VOYAGES.data[key];
+      const place = PLACES.find(p => p.key === key);
+      if (!d || !place) return;
+
+      clearTimeout(hideTimer);
+      previewTitle.textContent = place.label;
+      previewGrid.innerHTML = '';
+      const video = document.createElement('video');
+      video.src = 'video/covers/' + key + '.mp4';
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.setAttribute('aria-hidden', 'true');
+      video.style.setProperty('--cover-scale', String(coverScaleFor(key)));
+      previewGrid.appendChild(video);
+      video.play().catch(() => {});
+
+      if (follower) follower.move(clientX, clientY, PREVIEW_W, PREVIEW_H);
+      preview.classList.add('visible');
+      preview.setAttribute('aria-hidden', 'false');
+      setActivePin(key);
+    }
+
+    function hidePreview(delay) {
+      if (!finePointer) return;
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        previewGrid.querySelectorAll('video').forEach(v => {
+          v.pause();
+          v.currentTime = 0;
+        });
+        preview.classList.remove('visible');
+        preview.setAttribute('aria-hidden', 'true');
+      }, delay || 100);
+    }
+
+    function bindPinEvents(pinEl, key) {
+      pinEls.set(key, pinEl);
+      if (finePointer) {
+        pinEl.addEventListener('mouseenter', e => showPreview(key, e.clientX, e.clientY));
+        pinEl.addEventListener('mousemove', e => showPreview(key, e.clientX, e.clientY));
+        pinEl.addEventListener('mouseleave', () => hidePreview(140));
+      }
+      pinEl.addEventListener('click', e => {
+        e.stopPropagation();
+        goVille(key);
+      });
+    }
+
+    function initMap() {
+      if (typeof L === 'undefined') {
+        document.getElementById('mapFallback').classList.add('show');
+        return;
+      }
+
+      map = L.map('map', { zoomControl: true, scrollWheelZoom: true, minZoom: 2, maxZoom: 18 });
+
+      const tiles = L.tileLayer(VOYAGES.TILE_URL, {
+        attribution: VOYAGES.TILE_ATTR,
+        subdomains: 'abcd',
+        maxZoom: 20
+      });
+      tiles.addTo(map);
+
+      let errors = 0;
+      tiles.on('tileerror', () => {
+        errors++;
+        if (errors > 8) document.getElementById('mapFallback').classList.add('show');
+      });
+
+      PLACES.forEach(p => {
+        const icon = L.divIcon({
+          className: 'pin-wrap',
+          html: pinHtml(p),
+          iconSize: [1, 1],
+          iconAnchor: [8, 8]
+        });
+        const marker = L.marker([p.lat, p.lng], { icon }).addTo(map);
+        markers.set(p.key, marker);
+        marker.on('click', () => goVille(p.key));
+
+        requestAnimationFrame(() => {
+          const el = marker.getElement();
+          const pin = el && el.querySelector('.pin');
+          if (pin) bindPinEvents(pin, p.key);
+        });
+      });
+
+      map.fitBounds(L.latLngBounds(PLACES.map(p => [p.lat, p.lng])).pad(0.32));
+      updateMapLabels();
+      map.on('zoomend', updateMapLabels);
+
+      const fix = () => map.invalidateSize({ animate: false });
+      fix();
+      setTimeout(fix, 150);
+      setTimeout(fix, 600);
+      window.addEventListener('resize', fix);
+    }
+
+    function buildDestNav() {
+      const nav = document.getElementById('destNav');
+      PLACES.forEach(p => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dest-btn' + (p.future ? ' future' : '');
+        btn.dataset.key = p.key;
+        btn.textContent = p.label;
+        btn.addEventListener('click', () => {
+          flyToPlace(p.key, 6);
+          showGoCta(p.key);
+          document.getElementById('carte').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        nav.appendChild(btn);
+      });
+    }
+
+    function buildGallery() {
+      const g = document.getElementById('gridposts');
+      const finePointer = VOYAGES.hasFinePointer();
+
+      PLACES.filter(p => !p.future).forEach(p => {
+        const d = VOYAGES.data[p.key];
+        if (!d) return;
+        const fig = document.createElement('a');
+        fig.className = 'card-trip';
+        fig.href = VOYAGES.villeUrl(p.key);
+
+        const media = document.createElement('div');
+        media.className = 'card-trip-media';
+
+        const fallback = document.createElement('img');
+        fallback.src = VOYAGES.previewImages(p.key, 1)[0];
+        fallback.alt = '';
+        fallback.setAttribute('aria-hidden', 'true');
+        media.appendChild(fallback);
+
+        const video = document.createElement('video');
+        video.src = 'video/covers/' + p.key + '.mp4';
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.setAttribute('aria-hidden', 'true');
+        media.appendChild(video);
+
+        video.addEventListener('loadedmetadata', () => {
+          applyCardCover(video, p.key);
+        });
+        video.addEventListener('loadeddata', () => {
+          fallback.remove();
+        });
+        video.addEventListener('error', () => {
+          video.remove();
+        });
+
+        function playPreview() {
+          if (!video.isConnected) return;
+          video.play().catch(() => {});
+        }
+
+        function stopPreview() {
+          if (!video.isConnected) return;
+          video.pause();
+          video.currentTime = 0;
+        }
+
+        if (finePointer) {
+          fig.addEventListener('mouseenter', playPreview);
+          fig.addEventListener('mouseleave', stopPreview);
+          fig.addEventListener('focus', playPreview);
+          fig.addEventListener('blur', stopPreview);
+        }
+
+        const cap = document.createElement('figcaption');
+        cap.innerHTML = '<span>Ville</span><strong>' + p.label + '</strong>';
+        fig.appendChild(media);
+        fig.appendChild(cap);
+        g.appendChild(fig);
+      });
+    }
+
+    /** Scroll cascade — IntersectionObserver + classe .visible */
+    function initScrollCascade(selector, delayStep) {
+      const els = document.querySelectorAll(selector);
+      if (!els.length) return;
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced || !('IntersectionObserver' in window)) {
+        els.forEach(el => el.classList.add('visible'));
+        return;
+      }
+
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          const i = Number(el.dataset.cascadeIndex) || 0;
+          setTimeout(() => el.classList.add('visible'), i * delayStep);
+          io.unobserve(el);
+        });
+      }, { root: null, rootMargin: '0px 0px -6% 0px', threshold: 0.12 });
+
+      els.forEach((el, i) => {
+        el.dataset.cascadeIndex = String(i);
+        io.observe(el);
+      });
+    }
+
+    buildDestNav();
+    buildGallery();
+
+    initScrollCascade('.dest-btn', 70);
+    initScrollCascade('.card-trip', 90);
+
+    VOYAGES.initScrollReveal('.reveal', { stagger: 55 });
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initMap);
+    } else {
+      initMap();
+    }
+    window.addEventListener('load', () => {
+      if (map) map.invalidateSize({ animate: false });
+    });
+  })();
+  </script>
+</body>
+</html>

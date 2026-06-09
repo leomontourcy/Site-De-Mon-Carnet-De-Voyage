@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ville — Voyage Léo Montourcy</title>
+  <meta name="description" content="Album photo et souvenirs de voyage — Voyage Léo Montourcy." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/luxe.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="topnav reveal">
+      <a class="brand" href="index.html">Voyage <span>Léo Montourcy</span></a>
+      <div class="topnav-links">
+        <a href="index.html#carte">Carte</a>
+        <a href="https://instagram.com/leo_mtnc" target="_blank" rel="noopener">Instagram</a>
+      </div>
+    </nav>
+
+    <header class="ville-hero reveal" id="villeHero">
+      <a class="back-link" href="index.html#carte">← Retour à la carte</a>
+      <h1 id="villeName">…</h1>
+      <p class="ville-meta" id="villeMeta"></p>
+      <span class="ville-badge" id="villeBadge"></span>
+    </header>
+
+    <p class="gallery-sub reveal" style="margin-top:-24px;margin-bottom:20px">Clique sur une image pour l'agrandir.</p>
+    <div class="ville-gallery" id="villeGallery"></div>
+
+    <footer class="footer reveal">Voyage Léo Montourcy</footer>
+  </div>
+
+  <script src="js/voyages.js"></script>
+  <script>
+  (function () {
+    const params = new URLSearchParams(location.search);
+    const key = params.get('ville');
+    const d = key && VOYAGES.data[key];
+
+    if (!d) {
+      document.getElementById('villeName').textContent = 'Destination introuvable';
+      document.getElementById('villeMeta').textContent = 'Retourne à la carte pour choisir une ville.';
+      document.title = 'Destination introuvable — Voyage Léo Montourcy';
+      return;
+    }
+
+    document.title = d.name + ' — Voyage Léo Montourcy';
+    document.querySelector('meta[name="description"]').setAttribute(
+      'content',
+      'Souvenirs et photos de voyage à ' + d.name + ' — carnet Voyage Léo Montourcy.'
+    );
+
+    document.getElementById('villeName').textContent = d.name;
+    document.getElementById('villeMeta').textContent = d.country || d.meta;
+    document.getElementById('villeBadge').textContent = d.future
+      ? 'Chapitre à venir'
+      : (d.count ? d.count + ' souvenirs' : '');
+
+    const gallery = document.getElementById('villeGallery');
+    const medias = VOYAGES.allMedias(key);
+
+    medias.forEach((m, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell' + (i === 0 ? ' featured' : '');
+      if (m.type === 'video') {
+        cell.innerHTML =
+          '<video src="' + m.src + '" autoplay muted loop playsinline preload="metadata" aria-label="' + (m.alt || '') + '"></video>';
+      } else {
+        cell.innerHTML = '<img src="' + m.src + '" alt="' + (m.alt || VOYAGES.imageAlt(d.name, i, d.future)) + '">';
+      }
+      gallery.appendChild(cell);
+    });
+
+    function initScrollCascade(selector, delayStep) {
+      const els = document.querySelectorAll(selector);
+      if (!els.length) return;
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced || !('IntersectionObserver' in window)) {
+        els.forEach(el => el.classList.add('visible'));
+        return;
+      }
+
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          const i = Number(el.dataset.cascadeIndex) || 0;
+          setTimeout(() => el.classList.add('visible'), i * delayStep);
+          io.unobserve(el);
+        });
+      }, { root: null, rootMargin: '0px 0px -6% 0px', threshold: 0.12 });
+
+      els.forEach((el, i) => {
+        el.dataset.cascadeIndex = String(i);
+        io.observe(el);
+      });
+    }
+
+    initScrollCascade('.ville-gallery .cell', 80);
+    VOYAGES.initScrollReveal('.reveal', { stagger: 60 });
+    VOYAGES.initLightbox('#villeGallery');
+  })();
+  </script>
+</body>
+</html>
