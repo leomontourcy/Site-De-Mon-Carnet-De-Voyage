@@ -175,8 +175,8 @@ const VOYAGES = {
     { key: 'bosnia',     label: 'Bosnie',        lat: 43.8563,  lng: 18.4131,  future: true }
   ],
 
-  TILE_URL: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  TILE_ATTR: '&copy; OSM &copy; CARTO',
+  TILE_URL: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  TILE_ATTR: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 
   villeUrl(key) {
     return 'ville.html?ville=' + encodeURIComponent(key);
