@@ -252,7 +252,7 @@ const VOYAGES = {
       const imagesOnly = d.photos.filter(f => f.match(/\.(jpg|jpeg|png|webp)$/i));
       const targetArr = imagesOnly.length > 0 ? imagesOnly : d.photos;
       return targetArr.slice(0, max).map(filename =>
-        (d.photoDir ? d.photoDir + '/' : '') + filename + '?v=2'
+        (d.photoDir ? d.photoDir + '/' : '') + filename.replace(/\.(jpg|jpeg|png)$/i, '.webp') + '?v=2'
       );
     }
     const n = d.count ? Math.min(d.count, max) : 1;
@@ -272,9 +272,10 @@ const VOYAGES = {
     if (d.photos && d.photos.length) {
       return d.photos.map((filename, i) => {
         const isVideo = filename.match(/\.(mp4|mov|webm)$/i);
+        let fn = isVideo ? filename : filename.replace(/\.(jpg|jpeg|png)$/i, '.webp');
         return {
           type: isVideo ? 'video' : 'img',
-          src: (d.photoDir ? d.photoDir + '/' : '') + filename + '?v=3',
+          src: (d.photoDir ? d.photoDir + '/' : '') + fn + '?v=3',
           alt: this.imageAlt(d.name, i)
         };
       });
@@ -299,8 +300,8 @@ const VOYAGES = {
   },
 
   /** Scroll reveal en cascade */
-  initScrollReveal(selector, options) {
-    const opts = Object.assign({ rootMargin: '0px 0px -8% 0px', threshold: 0.12, stagger: 70 }, options || {});
+  initScrollReveal(selector, options = {}) {
+    const opts = { rootMargin: '0px 0px -8% 0px', threshold: 0.12, stagger: 70, ...options };
     const els = document.querySelectorAll(selector);
     if (!els.length) return;
 
@@ -450,9 +451,9 @@ const VOYAGES = {
       render();
     }
 
-    lb.querySelector('.lightbox-close').onclick = close;
-    lb.querySelector('.lightbox-prev').onclick = () => step(-1);
-    lb.querySelector('.lightbox-next').onclick = () => step(1);
+    lb.querySelector('.lightbox-close').addEventListener('click', close);
+    lb.querySelector('.lightbox-prev').addEventListener('click', () => step(-1));
+    lb.querySelector('.lightbox-next').addEventListener('click', () => step(1));
     lb.addEventListener('click', e => { if (e.target === lb) close(); });
     document.addEventListener('keydown', e => {
       if (!lb.classList.contains('is-open')) return;

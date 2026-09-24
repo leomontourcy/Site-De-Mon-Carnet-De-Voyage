@@ -36,6 +36,7 @@
   <script src="js/voyages.js"></script>
   <script>
   (function () {
+    'use strict';
     const params = new URLSearchParams(location.search);
     const key = params.get('ville');
     const d = key && VOYAGES.data[key];
@@ -69,7 +70,7 @@
         cell.innerHTML =
           '<video data-src="' + m.src + '" muted loop playsinline preload="none" aria-label="' + (m.alt || '') + '"></video>';
       } else {
-        cell.innerHTML = '<img src="' + m.src + '" alt="' + (m.alt || VOYAGES.imageAlt(d.name, i, d.future)) + '" loading="lazy">';
+        cell.innerHTML = '<img src="' + m.src + '" alt="' + (m.alt || VOYAGES.imageAlt(d.name, i, d.future)) + '" loading="lazy" decoding="async">';
       }
       gallery.appendChild(cell);
     });
