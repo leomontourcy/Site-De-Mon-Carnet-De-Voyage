@@ -67,9 +67,9 @@
       cell.className = 'cell' + (i === 0 ? ' featured' : '');
       if (m.type === 'video') {
         cell.innerHTML =
-          '<video src="' + m.src + '" autoplay muted loop playsinline preload="metadata" aria-label="' + (m.alt || '') + '"></video>';
+          '<video data-src="' + m.src + '" muted loop playsinline preload="none" aria-label="' + (m.alt || '') + '"></video>';
       } else {
-        cell.innerHTML = '<img src="' + m.src + '" alt="' + (m.alt || VOYAGES.imageAlt(d.name, i, d.future)) + '">';
+        cell.innerHTML = '<img src="' + m.src + '" alt="' + (m.alt || VOYAGES.imageAlt(d.name, i, d.future)) + '" loading="lazy">';
       }
       gallery.appendChild(cell);
     });
@@ -80,19 +80,42 @@
 
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (reduced || !('IntersectionObserver' in window)) {
-        els.forEach(el => el.classList.add('visible'));
+        els.forEach(el => {
+          el.classList.add('visible');
+          const v = el.querySelector('video');
+          if (v) {
+            v.src = v.dataset.src;
+            v.play().catch(() => {});
+          }
+        });
         return;
       }
 
       const io = new IntersectionObserver(entries => {
         entries.forEach(entry => {
-          if (!entry.isIntersecting) return;
           const el = entry.target;
-          const i = Number(el.dataset.cascadeIndex) || 0;
-          setTimeout(() => el.classList.add('visible'), i * delayStep);
-          io.unobserve(el);
+          const video = el.querySelector('video');
+          if (entry.isIntersecting) {
+            if (!el.classList.contains('visible')) {
+              const i = Number(el.dataset.cascadeIndex) || 0;
+              setTimeout(() => el.classList.add('visible'), i * delayStep);
+            }
+            if (video) {
+              if (!video.hasAttribute('src')) {
+                video.setAttribute('src', video.dataset.src);
+                video.load();
+              }
+              video.play().catch(() => {});
+            }
+          } else {
+            if (video) {
+              video.pause();
+              video.removeAttribute('src');
+              video.load();
+            }
+          }
         });
-      }, { root: null, rootMargin: '0px 0px -6% 0px', threshold: 0.12 });
+      }, { root: null, rootMargin: '200px 0px 200px 0px', threshold: 0.01 });
 
       els.forEach((el, i) => {
         el.dataset.cascadeIndex = String(i);

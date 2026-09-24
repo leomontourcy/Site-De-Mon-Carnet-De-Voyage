@@ -29,9 +29,9 @@
     </header>
 
     <div class="ribbon" aria-label="Statistiques">
-      <div class="ribbon-cell"><strong>7</strong><span>Pays</span></div>
+      <div class="ribbon-cell"><strong id="mCountries">7</strong><span>Pays</span></div>
       <div class="ribbon-cell"><strong id="mCities">26</strong><span>Villes</span></div>
-      <div class="ribbon-cell"><strong>198</strong><span>Souvenirs</span></div>
+      <div class="ribbon-cell"><strong id="mSouvenirs">198</strong><span>Souvenirs</span></div>
       <div class="ribbon-cell"><strong>2026</strong><span>À venir</span></div>
     </div>
 
@@ -100,6 +100,21 @@
     const isCoarse = window.matchMedia('(pointer: coarse)').matches;
 
     document.getElementById('mCities').textContent = PLACES.filter(p => !p.future).length;
+    
+    const countries = new Set();
+    let souvenirs = 0;
+    PLACES.filter(p => !p.future).forEach(p => {
+      const d = VOYAGES.data[p.key];
+      if (d) {
+        if (d.country) countries.add(d.country);
+        else if (d.meta) countries.add(d.meta.split('·')[0].trim()); // handle fallback "Monténégro · Budva" if needed, though most have country
+        
+        if (d.photos) souvenirs += d.photos.length;
+        else if (d.count) souvenirs += d.count;
+      }
+    });
+    document.getElementById('mCountries').textContent = countries.size;
+    document.getElementById('mSouvenirs').textContent = souvenirs;
 
     if (isCoarse) {
       document.getElementById('mapHint').textContent =
@@ -199,6 +214,24 @@
       video.preload = 'auto';
       video.setAttribute('aria-hidden', 'true');
       video.style.setProperty('--cover-scale', String(coverScaleFor(key)));
+      
+      video.addEventListener('error', () => {
+        let fallbackSrc = '';
+        if (d.photos && d.photos.length) {
+          const photo = d.photos.find(f => f.match(/\.(jpg|jpeg|png)$/i)) || d.photos[0];
+          fallbackSrc = (d.photoDir ? d.photoDir + '/' : '') + photo + '?v=2';
+        }
+        if (fallbackSrc) {
+          const img = document.createElement('img');
+          img.src = fallbackSrc;
+          img.style.setProperty('--cover-scale', String(coverScaleFor(key)));
+          img.alt = place.label;
+          if (video.parentNode) {
+            video.parentNode.replaceChild(img, video);
+          }
+        }
+      });
+      
       previewGrid.appendChild(video);
       video.play().catch(() => {});
 
@@ -319,34 +352,39 @@
         fallback.src = VOYAGES.previewImages(p.key, 1)[0];
         fallback.alt = '';
         fallback.setAttribute('aria-hidden', 'true');
+        fallback.loading = 'lazy';
         media.appendChild(fallback);
 
-        const video = document.createElement('video');
-        video.src = 'video/covers/' + p.key + '.mp4';
-        video.muted = true;
-        video.loop = true;
-        video.playsInline = true;
-        video.preload = 'metadata';
-        video.setAttribute('aria-hidden', 'true');
-        media.appendChild(video);
 
-        video.addEventListener('loadedmetadata', () => {
-          applyCardCover(video, p.key);
-        });
-        video.addEventListener('loadeddata', () => {
-          fallback.remove();
-        });
-        video.addEventListener('error', () => {
-          video.remove();
-        });
+        let video = null;
+        if (d && d.hasVideoCover) {
+          video = document.createElement('video');
+          video.src = 'video/covers/' + p.key + '.mp4';
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.preload = 'metadata';
+          video.setAttribute('aria-hidden', 'true');
+          media.appendChild(video);
+
+          video.addEventListener('loadedmetadata', () => {
+            applyCardCover(video, p.key);
+          });
+          video.addEventListener('loadeddata', () => {
+            fallback.remove();
+          });
+          video.addEventListener('error', () => {
+            video.remove();
+          });
+        }
 
         function playPreview() {
-          if (!video.isConnected) return;
+          if (!video || !video.isConnected) return;
           video.play().catch(() => {});
         }
 
         function stopPreview() {
-          if (!video.isConnected) return;
+          if (!video || !video.isConnected) return;
           video.pause();
           video.currentTime = 0;
         }

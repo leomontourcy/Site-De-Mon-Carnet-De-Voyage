@@ -473,7 +473,8 @@ img, video { max-width: 100%; display: block; }
   overflow: hidden;
 }
 
-.map-preview-grid video {
+.map-preview-grid video,
+.map-preview-grid img {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 5;
