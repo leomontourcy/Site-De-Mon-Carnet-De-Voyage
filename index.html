@@ -29,10 +29,10 @@
     </header>
 
     <div class="ribbon" aria-label="Statistiques">
-      <div class="ribbon-cell"><strong id="mCountries">7</strong><span>Pays</span></div>
-      <div class="ribbon-cell"><strong id="mCities">26</strong><span>Villes</span></div>
-      <div class="ribbon-cell"><strong id="mSouvenirs">198</strong><span>Souvenirs</span></div>
-      <div class="ribbon-cell"><strong>2026</strong><span>À venir</span></div>
+      <div class="ribbon-cell"><strong id="mCountries">10</strong><span>Pays</span></div>
+      <div class="ribbon-cell"><strong id="mCities">36</strong><span>Villes</span></div>
+      <div class="ribbon-cell"><strong id="mSouvenirs">864</strong><span>Souvenirs</span></div>
+      <div class="ribbon-cell"><strong id="mVideos">144</strong><span>Vidéos</span></div>
     </div>
 
     <section class="chapter" id="carte">
@@ -116,6 +116,12 @@
     });
     document.getElementById('mCountries').textContent = countries.size;
     document.getElementById('mSouvenirs').textContent = souvenirs;
+
+    const videos = PLACES.filter(p => !p.future).reduce((n, p) => {
+      const d = VOYAGES.data[p.key];
+      return n + (d && d.photos ? d.photos.filter(f => /\.(mp4|mov|webm)$/i.test(f)).length : 0);
+    }, 0);
+    document.getElementById('mVideos').textContent = videos;
 
     if (isCoarse) {
       document.getElementById('mapHint').textContent =
