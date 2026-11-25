@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ville — Voyage Léo Montourcy</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="description" content="Album photo et souvenirs de voyage — Voyage Léo Montourcy.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/luxe.css">
+</head>
+<body>
+  <div class="shell">
+    <nav class="topnav reveal">
+      <a class="brand" href="index.html">Voyage <span>Léo Montourcy</span></a>
+      <div class="topnav-links">
+        <a href="index.html#carte">Carte</a>
+        <a href="https://instagram.com/leo_mtnc" target="_blank" rel="noopener noreferrer">Instagram</a>
+      </div>
+    </nav>
+
+    <header class="ville-hero reveal" id="villeHero">
+      <a class="back-link" href="index.html#carte">← Retour à la carte</a>
+      <h1 id="villeName">Chargement…</h1>
+      <p class="ville-meta" id="villeMeta"></p>
+      <span class="ville-badge" id="villeBadge"></span>
+    </header>
+
+    <p class="gallery-sub ville-hint reveal" id="villeHint">Clique sur une image pour l'agrandir.</p>
+    <div class="ville-gallery" id="villeGallery"></div>
+
+    <footer class="footer reveal">Voyage Léo Montourcy</footer>
+  </div>
+
+  <script src="js/voyages.js"></script>
+  <script src="js/ville.js"></script>
+</body>
+</html>

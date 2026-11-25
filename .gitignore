@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Originaux (avec GPS) : jamais publiés. Voir tools/preparer_medias.sh
+_originaux/
+photo_site/**/*.jpg
+photo_site/**/*.jpeg
+photo_site/**/*.JPG
+photo_site/**/*.png
+photo_site/**/*.PNG
+photo_site/**/*.MOV
+photo_site/**/*.mov
+# Pas de motif *.MP4 : git sur macOS ignore la casse et masquerait les .mp4 web.
+*.tmp.m4v
+*.tmp.png
+
+# Config locale de Claude Code
+.claude/
+
+# Éditeurs
+.vscode/
+.idea/
